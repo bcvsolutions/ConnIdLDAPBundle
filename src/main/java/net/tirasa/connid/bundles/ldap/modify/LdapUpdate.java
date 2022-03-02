@@ -73,6 +73,7 @@ public class LdapUpdate extends LdapModifyOperation {
     public Uid update(final Set<Attribute> attrs) {
         String entryDN = LdapSearches.findEntryDN(conn, oclass, uid);
         PosixGroupMember posixMember = new PosixGroupMember(entryDN);
+        AliasGroupMember aliasMember = new AliasGroupMember(entryDN);
 
         // Extract the Name attribute if any, to be used to rename the entry later.
         Set<Attribute> updateAttrs = attrs;
@@ -94,6 +95,8 @@ public class LdapUpdate extends LdapModifyOperation {
         final List<String> ldapGroups = getStringListValue(updateAttrs, LdapConstants.LDAP_GROUPS_NAME);
 
         final List<String> posixGroups = getStringListValue(updateAttrs, LdapConstants.POSIX_GROUPS_NAME);
+        
+        final List<String> aliasGroups = getStringListValue(updateAttrs, LdapConstants.ALIAS_GROUPS_NAME);
 
         final Pair<Attributes, GuardedPasswordAttribute> attrToModify = getAttributesToModify(updateAttrs);
 
@@ -110,6 +113,11 @@ public class LdapUpdate extends LdapModifyOperation {
         if (newPosixRefAttrs != null && newPosixRefAttrs.isEmpty()) {
             checkRemovedPosixRefAttrs(posixMember.getPosixRefAttributes(),
                     posixMember.getPosixGroupMemberships());
+        }
+        
+        final Set<String> newAliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), LdapUtil.quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
+        if (newAliasRefAttrs != null && newAliasRefAttrs.isEmpty()){
+        	checkRemovedAliasRefAttrs(aliasMember.getAliasRefAttributes(), aliasMember.getAliasGroupMemberships());
         }
 
         if (status != null && status.getValue() != null && !status.getValue().isEmpty()) {
@@ -131,6 +139,9 @@ public class LdapUpdate extends LdapModifyOperation {
             if (newPosixRefAttrs != null && conn.getConfiguration().
                     isMaintainPosixGroupMembership() || posixGroups != null) {
                 posixMember.getPosixRefAttributes();
+            }
+            if (newAliasRefAttrs != null && conn.getConfiguration().isMaintainAliasGroupMembership() || aliasGroups != null){
+            	aliasMember.getAliasRefAttributes();
             }
             oldEntryDN = entryDN;
             entryDN = conn.getSchemaMapping().rename(oclass, oldEntryDN, newName);
@@ -187,6 +198,36 @@ public class LdapUpdate extends LdapModifyOperation {
         }
 
         groupHelper.modifyPosixGroupMemberships(posixGroupMod);
+        
+      //update alias groups
+        Modification<GroupMembership> aliasGroupMod = new Modification<GroupMembership>();
+        if (newAliasRefAttrs != null && conn.getConfiguration().isMaintainAliasGroupMembership()) {
+            Set<String> removedAliasRefAttrs = new HashSet<String>(aliasMember.getAliasRefAttributes());
+            removedAliasRefAttrs.removeAll(newAliasRefAttrs);
+            Set<GroupMembership> members = aliasMember.getAliasGroupMembershipsByAttrs(removedAliasRefAttrs);
+            aliasGroupMod.removeAll(members);
+            if (!members.isEmpty()) {
+                String firstAliasRefAttr = getFirstAliasRefAttr(entryDN, newAliasRefAttrs);
+                for (GroupMembership member : members) {
+                    aliasGroupMod.add(new GroupMembership(firstAliasRefAttr, member.getGroupDN()));
+                }
+            }
+        }
+        
+        if (aliasGroups != null){
+        	Set<GroupMembership> members = aliasMember.getAliasGroupMemberships();
+        	aliasGroupMod.removeAll(members);
+        	aliasGroupMod.clearAdded(); // Since we will be replacing with the new groups.
+        	if (!aliasGroups.isEmpty()){
+        		String firstAliasRefAttr = getFirstAliasRefAttr(entryDN, newAliasRefAttrs);
+        		for (String aliasGroup : aliasGroups){
+        			aliasGroupMod.add(new GroupMembership(firstAliasRefAttr, aliasGroup));
+        		}
+        				
+        	}        	
+        }
+        
+        groupHelper.modifyAliasGroupMemberships(aliasGroupMod);
 
         return conn.getSchemaMapping().createUid(oclass, entryDN);
     }
@@ -252,6 +293,14 @@ public class LdapUpdate extends LdapModifyOperation {
             }
         }
     }
+    
+    private void checkRemovedAliasRefAttrs(Set<String> removedAliasRefAttrs, Set<GroupMembership> memberships) {
+        for (GroupMembership membership : memberships) {
+            if (removedAliasRefAttrs.contains(membership.getMemberRef())) {
+                throw new ConnectorException(conn.format("cannotRemoveBecauseAliasMember", GroupHelper.getAliasRefAttribute()));
+            }
+        }
+    }
 
     private Pair<Attributes, GuardedPasswordAttribute> getAttributesToModify(final Set<Attribute> attrs) {
         BasicAttributes ldapAttrs = new BasicAttributes();
@@ -267,6 +316,8 @@ public class LdapUpdate extends LdapModifyOperation {
                 // Handled elsewhere.
             } else if (LdapConstants.isPosixGroups(attr.getName())) {
                 // Handled elsewhere.
+            } else if (LdapConstants.isAliasGroups(attr.getName())) {
+            	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
             } else {

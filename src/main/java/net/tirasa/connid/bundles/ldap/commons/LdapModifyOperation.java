@@ -163,6 +163,13 @@ public abstract class LdapModifyOperation {
         }
         return min(posixRefAttrs);
     }
+    
+    protected final String getFirstAliasRefAttr(String entryDN, Set<String> aliasRefAttrs){
+    	if (isEmpty(aliasRefAttrs)){
+    		throw new ConnectorException(conn.format("cannotAddToAliasGroup",  null, entryDN, GroupHelper.getAliasRefAttribute()));
+    	}
+    	return min(aliasRefAttrs);
+    }
 
     /**
      * Holds the POSIX ref attributes and the respective group memberships. Retrieves them lazily so that they are only
@@ -225,6 +232,69 @@ public abstract class LdapModifyOperation {
         private LdapEntry getLdapEntry() {
             if (entry == null) {
                 entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), GroupHelper.getPosixRefAttribute());
+            }
+            return entry;
+        }
+    }
+    
+    /**
+     * Holds the ALIAS ref attributes and the respective group
+     * memberships. Retrieves them lazily so that they are only
+     * retrieved once, when they are needed.
+     */
+    public final class AliasGroupMember {
+
+        private final String entryDN;
+
+        private LdapEntry entry;
+        private Set<String> aliasRefAttrs;
+        private Set<GroupMembership> aliasGroupMemberships;
+
+        public AliasGroupMember(String entryDN) {
+            this.entryDN = entryDN;
+        }
+
+        public Set<GroupMembership> getAliasGroupMemberships() {
+            if (aliasGroupMemberships == null) {
+                aliasGroupMemberships = groupHelper.getAliasGroupMemberships(getAliasRefAttributes());
+            }
+            return aliasGroupMemberships;
+        }
+
+        public Set<GroupMembership> getAliasGroupMembershipsByAttrs(Set<String> aliasRefAttrs) {
+            Set<GroupMembership> result = new HashSet<GroupMembership>();
+            for (GroupMembership member : getAliasGroupMemberships()) {
+                if (aliasRefAttrs.contains(member.getMemberRef())) {
+                    result.add(member);
+                }
+            }
+            return result;
+        }
+
+        public Set<GroupMembership> getAliasGroupMembershipsByGroups(List<String> groupDNs) {
+            Set<LdapName> groupNames = new HashSet<LdapName>();
+            for (String groupDN : groupDNs) {
+                groupNames.add(quietCreateLdapName(groupDN));
+            }
+            Set<GroupMembership> result = new HashSet<GroupMembership>();
+            for (GroupMembership member : getAliasGroupMemberships()) {
+                if (groupNames.contains(quietCreateLdapName(member.getGroupDN()))) {
+                    result.add(member);
+                }
+            }
+            return result;
+        }
+
+        public Set<String> getAliasRefAttributes() {
+            if (aliasRefAttrs == null) {
+                aliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), null, getLdapEntry().getAttributes());
+            }
+            return aliasRefAttrs;
+        }
+
+        private LdapEntry getLdapEntry() {
+            if (entry == null) {
+                entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), GroupHelper.getAliasRefAttribute());
             }
             return entry;
         }
