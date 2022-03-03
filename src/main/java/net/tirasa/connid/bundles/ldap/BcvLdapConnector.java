@@ -54,8 +54,8 @@ import org.identityconnectors.framework.spi.operations.SyncOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 
-@ConnectorClass(configurationClass = LdapConfiguration.class, displayNameKey = "LdapConnector")
-public class LdapConnector implements
+@ConnectorClass(configurationClass = LdapConfiguration.class, displayNameKey = "BCVLdapConnector")
+public class BcvLdapConnector implements
         TestOp, PoolableConnector, SchemaOp, SearchOp<LdapFilter>,
         AuthenticateOp, ResolveUsernameOp, CreateOp, DeleteOp,
         UpdateAttributeValuesOp, SyncOp {

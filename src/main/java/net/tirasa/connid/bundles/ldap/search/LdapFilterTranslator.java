@@ -41,10 +41,8 @@ import org.identityconnectors.framework.common.objects.filter.LessThanFilter;
 import org.identityconnectors.framework.common.objects.filter.LessThanOrEqualFilter;
 import org.identityconnectors.framework.common.objects.filter.SingleValueAttributeFilter;
 import org.identityconnectors.framework.common.objects.filter.StartsWithFilter;
+
 import net.tirasa.connid.bundles.ldap.schema.LdapSchemaMapping;
-import org.identityconnectors.framework.common.objects.Attribute;
-import org.identityconnectors.framework.common.objects.AttributeBuilder;
-import org.identityconnectors.framework.common.objects.filter.EqualsIgnoreCaseFilter;
 
 public class LdapFilterTranslator extends AbstractFilterTranslator<LdapFilter> {
 
@@ -122,15 +120,6 @@ public class LdapFilterTranslator extends AbstractFilterTranslator<LdapFilter> {
         // XXX is there a way in LDAP to test that the values of an attribute
         // exactly match a given list of values?
         return createContainsAllValuesFilter(filter, not);
-    }
-
-    @Override
-    protected LdapFilter createEqualsIgnoreCaseExpression(EqualsIgnoreCaseFilter filter, boolean not) {
-        // LDAP is generally case-insensitive, reverting to EqualsFilter
-        Attribute attr = filter.getValue() == null
-                ? AttributeBuilder.build(filter.getName())
-                : AttributeBuilder.build(filter.getName(), filter.getValue());
-        return createEqualsExpression(new EqualsFilter(attr), not);
     }
 
     @Override

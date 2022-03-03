@@ -134,9 +134,8 @@ public class LdapConfiguration extends AbstractConfiguration {
      * The LDAP attribute holding the member for nisMailAlias groups 
      */
     private String aliasGroupMemberAttribute = "rfc822MailMember";
-    
+
     private String aliasGroupMemberAccountAttribute = "mail";
-	/**
     
     /**
      * If the server stores passwords in clear text, we will hash them with the algorithm specified here.
@@ -872,7 +871,7 @@ public class LdapConfiguration extends AbstractConfiguration {
 	public void setAliasGroupMemberAccountAttribute(String aliasGroupMemberAccountAttribute) {
 		this.aliasGroupMemberAccountAttribute = aliasGroupMemberAccountAttribute;
 	}
-	
+
 	@ConfigurationProperty(order = 45,
             displayMessageKey = "maintainAliasGroupMembership.display",
             helpMessageKey = "maintainAliasGroupMembership.help")

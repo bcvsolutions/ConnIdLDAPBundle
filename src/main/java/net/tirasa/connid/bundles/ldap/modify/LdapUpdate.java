@@ -23,16 +23,30 @@
  */
 package net.tirasa.connid.bundles.ldap.modify;
 
+import static net.tirasa.connid.bundles.ldap.commons.LdapUtil.quietCreateLdapName;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
+
+import org.identityconnectors.common.CollectionUtil;
+import org.identityconnectors.common.Pair;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
+import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeUtil;
+import org.identityconnectors.framework.common.objects.Name;
+import org.identityconnectors.framework.common.objects.ObjectClass;
+import org.identityconnectors.framework.common.objects.OperationalAttributes;
+import org.identityconnectors.framework.common.objects.Uid;
+
 import net.tirasa.connid.bundles.ldap.LdapConnection;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper.GroupMembership;
@@ -44,15 +58,6 @@ import net.tirasa.connid.bundles.ldap.commons.StatusManagement;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute.Accessor;
 import net.tirasa.connid.bundles.ldap.search.LdapSearches;
-import org.identityconnectors.common.CollectionUtil;
-import org.identityconnectors.common.Pair;
-import org.identityconnectors.framework.common.exceptions.ConnectorException;
-import org.identityconnectors.framework.common.objects.Attribute;
-import org.identityconnectors.framework.common.objects.AttributeUtil;
-import org.identityconnectors.framework.common.objects.Name;
-import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.OperationalAttributes;
-import org.identityconnectors.framework.common.objects.Uid;
 
 public class LdapUpdate extends LdapModifyOperation {
 
@@ -115,7 +120,7 @@ public class LdapUpdate extends LdapModifyOperation {
                     posixMember.getPosixGroupMemberships());
         }
         
-        final Set<String> newAliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), LdapUtil.quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
+        final Set<String> newAliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
         if (newAliasRefAttrs != null && newAliasRefAttrs.isEmpty()){
         	checkRemovedAliasRefAttrs(aliasMember.getAliasRefAttributes(), aliasMember.getAliasGroupMemberships());
         }
@@ -281,7 +286,7 @@ public class LdapUpdate extends LdapModifyOperation {
 
         return uid;
     }
-
+    
     private void checkRemovedPosixRefAttrs(
             final Set<String> removedPosixRefAttrs,
             final Set<GroupMembership> memberships) {

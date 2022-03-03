@@ -1,18 +1,18 @@
-/*
+/* 
  * ====================
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
- *
+ * 
  * Copyright 2008-2009 Sun Microsystems, Inc. All rights reserved.
- *
+ * 
  * The contents of this file are subject to the terms of the Common Development
  * and Distribution License("CDDL") (the "License").  You may not use this file
  * except in compliance with the License.
- *
+ * 
  * You can obtain a copy of the License at
  * http://opensource.org/licenses/cddl1.php
  * See the License for the specific language governing permissions and limitations
  * under the License.
- *
+ * 
  * When distributing the Covered Code, include this CDDL Header Notice in each file
  * and include the License file at http://opensource.org/licenses/cddl1.php.
  * If applicable, add the following below this CDDL Header, with the fields
@@ -38,19 +38,14 @@ import org.identityconnectors.framework.common.objects.filter.GreaterThanOrEqual
 import org.identityconnectors.framework.common.objects.filter.LessThanFilter;
 import org.identityconnectors.framework.common.objects.filter.LessThanOrEqualFilter;
 import org.identityconnectors.framework.common.objects.filter.StartsWithFilter;
+import org.junit.Test;
+
 import net.tirasa.connid.bundles.ldap.LdapConfiguration;
 import net.tirasa.connid.bundles.ldap.LdapConnection;
 import net.tirasa.connid.bundles.ldap.LdapConnectorTestBase;
 import net.tirasa.connid.bundles.ldap.schema.LdapSchemaMapping;
-import org.identityconnectors.framework.common.objects.filter.EqualsIgnoreCaseFilter;
-import org.junit.Test;
 
-public class LdapFilterTranslatorTests extends LdapConnectorTestBase {
-
-    @Override
-    protected boolean restartServerAfterEachTest() {
-        return false;
-    }
+public class LdapFilterTranslatorTests {
 
     @Test
     public void testAnd() {
@@ -58,11 +53,11 @@ public class LdapFilterTranslatorTests extends LdapConnectorTestBase {
                 LdapFilter.forNativeFilter("(foo=1)"),
                 LdapFilter.forNativeFilter("(bar=2)")));
         assertEquals(LdapFilter.forEntryDN("dc=example,dc=com").withNativeFilter("(foo=1)"), newTranslator().createAndExpression(
-                        LdapFilter.forEntryDN("dc=example,dc=com"),
-                        LdapFilter.forNativeFilter("(foo=1)")));
+                LdapFilter.forEntryDN("dc=example,dc=com"),
+                LdapFilter.forNativeFilter("(foo=1)")));
         assertEquals(LdapFilter.forEntryDN("dc=example,dc=com").withNativeFilter("(&(foo=1)(bar=2))"), newTranslator().createAndExpression(
-                        LdapFilter.forEntryDN("dc=example,dc=com").withNativeFilter("(foo=1)"),
-                        LdapFilter.forNativeFilter("(bar=2)")));
+                LdapFilter.forEntryDN("dc=example,dc=com").withNativeFilter("(foo=1)"),
+                LdapFilter.forNativeFilter("(bar=2)")));
         assertNull(newTranslator().createAndExpression(
                 LdapFilter.forEntryDN("dc=example,dc=com").withNativeFilter("(foo=1)"),
                 LdapFilter.forEntryDN("dc=example,dc=org").withNativeFilter("(bar=2)")));
@@ -123,17 +118,6 @@ public class LdapFilterTranslatorTests extends LdapConnectorTestBase {
         filter = (EqualsFilter) FilterBuilder.equalTo(AttributeBuilder.build("foo", "bar", "baz"));
         assertEquals(LdapFilter.forNativeFilter("(&(foo=bar)(foo=baz))"), newTranslator().createEqualsExpression(filter, false));
         assertEquals(LdapFilter.forNativeFilter("(!(&(foo=bar)(foo=baz)))"), newTranslator().createEqualsExpression(filter, true));
-    }
-
-    @Test
-    public void testEqualsIgnoreCase() {
-        EqualsIgnoreCaseFilter filter = (EqualsIgnoreCaseFilter) FilterBuilder.equalsIgnoreCase(AttributeBuilder.build("foo", ""));
-        assertEquals(LdapFilter.forNativeFilter("(foo=*)"), newTranslator().createEqualsIgnoreCaseExpression(filter, false));
-        assertEquals(LdapFilter.forNativeFilter("(!(foo=*))"), newTranslator().createEqualsIgnoreCaseExpression(filter, true));
-
-        filter = (EqualsIgnoreCaseFilter) FilterBuilder.equalsIgnoreCase(AttributeBuilder.build("foo", "bar"));
-        assertEquals(LdapFilter.forNativeFilter("(foo=bar)"), newTranslator().createEqualsIgnoreCaseExpression(filter, false));
-        assertEquals(LdapFilter.forNativeFilter("(!(foo=bar))"), newTranslator().createEqualsIgnoreCaseExpression(filter, true));
     }
 
     @Test
