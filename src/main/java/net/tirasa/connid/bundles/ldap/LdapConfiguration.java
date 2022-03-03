@@ -124,7 +124,18 @@ public class LdapConfiguration extends AbstractConfiguration {
      * If true, will modify POSIX group membership of renamed/deleted entries.
      */
     private boolean maintainPosixGroupMembership = false;
+    
+    /**
+     * If true, will modify nisMailAlias group membership of renamed/deleted entries
+     */
+    private boolean maintainAliasGroupMembership = false;
 
+    /**
+     * The LDAP attribute holding the member for nisMailAlias groups 
+     */
+    private String aliasGroupMemberAttribute = "rfc822MailMember";
+
+    private String aliasGroupMemberAccountAttribute = "mail";
     /**
      * If the server stores passwords in clear text, we will hash them with the algorithm specified here.
      */
@@ -837,6 +848,39 @@ public class LdapConfiguration extends AbstractConfiguration {
     public void setConnectTimeout(long connectTimeout) {
         this.connectTimeout = connectTimeout;
     }
+    
+    @ConfigurationProperty(order = 43,
+            displayMessageKey = "aliasGroupMemberAttribute.display",
+            helpMessageKey = "aliasGroupMemberAttribute.help")
+    public String getAliasGroupMemberAttribute() {
+		return aliasGroupMemberAttribute;
+	}
+
+	public void setAliasGroupMemberAttribute(String aliasGroupMemberAttribute) {
+		this.aliasGroupMemberAttribute = aliasGroupMemberAttribute;
+	}
+
+	@ConfigurationProperty(order = 44,
+            displayMessageKey = "aliasGroupMemberAccountAttribute.display",
+            helpMessageKey = "aliasGroupMemberAccountAttribute.help")
+	public String getAliasGroupMemberAccountAttribute() {
+		return aliasGroupMemberAccountAttribute;
+	}
+
+	public void setAliasGroupMemberAccountAttribute(String aliasGroupMemberAccountAttribute) {
+		this.aliasGroupMemberAccountAttribute = aliasGroupMemberAccountAttribute;
+	}
+
+	@ConfigurationProperty(order = 45,
+            displayMessageKey = "maintainAliasGroupMembership.display",
+            helpMessageKey = "maintainAliasGroupMembership.help")
+	public boolean isMaintainAliasGroupMembership() {
+        return maintainAliasGroupMembership;
+    }
+
+    public void setMaintainAliasGroupMembership(boolean maintainAliasGroupMembership) {
+        this.maintainAliasGroupMembership = maintainAliasGroupMembership;
+    }
 
     // Getters and setters for configuration properties end here.
     public List<LdapName> getBaseContextsAsLdapNames() {
@@ -909,8 +953,11 @@ public class LdapConfiguration extends AbstractConfiguration {
         builder.append(passwordAttribute);
         builder.append(accountSearchFilter);
         builder.append(groupMemberAttribute);
+        builder.append(aliasGroupMemberAttribute);
         builder.append(maintainLdapGroupMembership);
         builder.append(maintainPosixGroupMembership);
+        builder.append(maintainAliasGroupMembership);
+        builder.append(aliasGroupMemberAccountAttribute);
         builder.append(passwordHashAlgorithm);
         builder.append(respectResourcePasswordPolicyChangeAfterReset);
         builder.append(useVlvControls);
