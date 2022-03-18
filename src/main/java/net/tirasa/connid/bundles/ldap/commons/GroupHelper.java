@@ -74,8 +74,12 @@ public class GroupHelper {
         return "uid";
     }
 
-    public static String getAliasRefAttribute() {
-        return "mail";
+    public String getAliasRefAttribute() {
+    	String aliasRef = conn.getConfiguration().getAliasGroupMemberRefAttribute();
+        if (aliasRef == null) {
+        	aliasRef = "mail";
+        }
+        return aliasRef;
     }
     
     private String getLdapGroupMemberAttribute() {

@@ -64,6 +64,8 @@ public class LdapUpdate extends LdapModifyOperation {
     private final ObjectClass oclass;
 
     private final Uid uid;
+    
+    private final GroupHelper groupHelper;
 
     public LdapUpdate(
             final LdapConnection conn,
@@ -73,6 +75,7 @@ public class LdapUpdate extends LdapModifyOperation {
         super(conn);
         this.oclass = oclass;
         this.uid = uid;
+        this.groupHelper = new GroupHelper(conn);
     }
 
     public Uid update(final Set<Attribute> attrs) {
@@ -120,7 +123,7 @@ public class LdapUpdate extends LdapModifyOperation {
                     posixMember.getPosixGroupMemberships());
         }
         
-        final Set<String> newAliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
+        final Set<String> newAliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
         if (newAliasRefAttrs != null && newAliasRefAttrs.isEmpty()){
         	checkRemovedAliasRefAttrs(aliasMember.getAliasRefAttributes(), aliasMember.getAliasGroupMemberships());
         }
@@ -204,7 +207,7 @@ public class LdapUpdate extends LdapModifyOperation {
 
         groupHelper.modifyPosixGroupMemberships(posixGroupMod);
         
-      //update alias groups
+        //update alias groups
         Modification<GroupMembership> aliasGroupMod = new Modification<GroupMembership>();
         if (newAliasRefAttrs != null && conn.getConfiguration().isMaintainAliasGroupMembership()) {
             Set<String> removedAliasRefAttrs = new HashSet<String>(aliasMember.getAliasRefAttributes());
@@ -302,7 +305,7 @@ public class LdapUpdate extends LdapModifyOperation {
     private void checkRemovedAliasRefAttrs(Set<String> removedAliasRefAttrs, Set<GroupMembership> memberships) {
         for (GroupMembership membership : memberships) {
             if (removedAliasRefAttrs.contains(membership.getMemberRef())) {
-                throw new ConnectorException(conn.format("cannotRemoveBecauseAliasMember", GroupHelper.getAliasRefAttribute()));
+                throw new ConnectorException(conn.format("cannotRemoveBecauseAliasMember", groupHelper.getAliasRefAttribute()));
             }
         }
     }

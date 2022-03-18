@@ -223,11 +223,16 @@ public class LdapSearch {
         cleanAttrsToGet.remove(LdapConstants.LDAP_GROUPS_NAME);
 
         final boolean posixGroups = cleanAttrsToGet.remove(LdapConstants.POSIX_GROUPS_NAME);
-
+        final boolean aliasGroups = cleanAttrsToGet.remove(LdapConstants.ALIAS_GROUPS_NAME);
+        
         final Set<String> result = conn.getSchemaMapping().getLdapAttributes(oclass, cleanAttrsToGet, true);
 
         if (posixGroups) {
             result.add(GroupHelper.getPosixRefAttribute());
+        }
+        
+        if (aliasGroups) {
+        	result.add(groupHelper.getAliasRefAttribute());
         }
 
         // Add attributes needed to define the entity status.
@@ -438,6 +443,7 @@ public class LdapSearch {
         // conflict with a custom attribute defined in the server schema.
         boolean ldapGroups = attributes.remove(LdapConstants.LDAP_GROUPS_NAME);
         boolean posixGroups = attributes.remove(LdapConstants.POSIX_GROUPS_NAME);
+        boolean aliasGroups = attributes.remove(LdapConstants.ALIAS_GROUPS_NAME);
 
         conn.getSchemaMapping().removeNonReadableAttributes(oclass, attributes);
 
@@ -447,6 +453,10 @@ public class LdapSearch {
 
         if (posixGroups) {
             attributes.add(LdapConstants.POSIX_GROUPS_NAME);
+        }
+        
+        if (aliasGroups) {
+        	attributes.add(LdapConstants.ALIAS_GROUPS_NAME);
         }
     }
 

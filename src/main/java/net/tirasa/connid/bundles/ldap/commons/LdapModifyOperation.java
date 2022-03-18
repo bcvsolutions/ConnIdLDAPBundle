@@ -166,7 +166,7 @@ public abstract class LdapModifyOperation {
     
     protected final String getFirstAliasRefAttr(String entryDN, Set<String> aliasRefAttrs){
     	if (isEmpty(aliasRefAttrs)){
-    		throw new ConnectorException(conn.format("cannotAddToAliasGroup",  null, entryDN, GroupHelper.getAliasRefAttribute()));
+    		throw new ConnectorException(conn.format("cannotAddToAliasGroup",  null, entryDN, groupHelper.getAliasRefAttribute()));
     	}
     	return min(aliasRefAttrs);
     }
@@ -287,14 +287,14 @@ public abstract class LdapModifyOperation {
 
         public Set<String> getAliasRefAttributes() {
             if (aliasRefAttrs == null) {
-                aliasRefAttrs = getAttributeValues(GroupHelper.getAliasRefAttribute(), null, getLdapEntry().getAttributes());
+                aliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), null, getLdapEntry().getAttributes());
             }
             return aliasRefAttrs;
         }
 
         private LdapEntry getLdapEntry() {
             if (entry == null) {
-                entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), GroupHelper.getAliasRefAttribute());
+                entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), groupHelper.getAliasRefAttribute());
             }
             return entry;
         }

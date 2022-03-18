@@ -137,6 +137,8 @@ public class LdapConfiguration extends AbstractConfiguration {
 
     private String aliasGroupMemberAccountAttribute = "mail";
     
+    private String aliasGroupMemberRefAttribute = "mail";
+    
     /**
      * If the server stores passwords in clear text, we will hash them with the algorithm specified here.
      */
@@ -882,6 +884,17 @@ public class LdapConfiguration extends AbstractConfiguration {
     public void setMaintainAliasGroupMembership(boolean maintainAliasGroupMembership) {
         this.maintainAliasGroupMembership = maintainAliasGroupMembership;
     }
+    
+    @ConfigurationProperty(order = 46,
+            displayMessageKey = "aliasGroupMemberRefAttribute.display",
+            helpMessageKey = "aliasGroupMemberRefAttribute.help")
+	public String getAliasGroupMemberRefAttribute() {
+        return aliasGroupMemberRefAttribute;
+    }
+
+    public void setAliasGroupMemberRefAttribute(String aliasGroupMemberRefAttribute) {
+        this.aliasGroupMemberRefAttribute = aliasGroupMemberRefAttribute;
+    }
 
     // Getters and setters for configuration properties end here.
     public List<LdapName> getBaseContextsAsLdapNames() {
@@ -958,6 +971,7 @@ public class LdapConfiguration extends AbstractConfiguration {
         builder.append(maintainLdapGroupMembership);
         builder.append(maintainPosixGroupMembership);
         builder.append(maintainAliasGroupMembership);
+        builder.append(aliasGroupMemberRefAttribute);
         builder.append(aliasGroupMemberAccountAttribute);
         builder.append(passwordHashAlgorithm);
         builder.append(respectResourcePasswordPolicyChangeAfterReset);
