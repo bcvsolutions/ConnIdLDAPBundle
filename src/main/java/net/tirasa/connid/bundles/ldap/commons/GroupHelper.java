@@ -178,7 +178,7 @@ public class GroupHelper {
             addMemberToGroup("memberUid", posixRefAttr, groupDN);
         }
     }
-
+    
     public void removePosixGroupMemberships(Set<GroupMembership> memberships) {
         log.ok("Removing POSIX group memberships {0}", memberships);
         for (GroupMembership membership : memberships) {
@@ -194,6 +194,13 @@ public class GroupHelper {
         }
         for (GroupMembership membership : mod.getAdded()) {
             addMemberToGroup("memberUid", membership.getMemberRef(), membership.getGroupDN());
+        }
+    }
+    
+    public void addAliasGroupMemberships(String aliasRefAttr, Collection<String> groupDNs) {
+        log.ok("Adding {0} to Alias groups {1}", aliasRefAttr, groupDNs);
+        for (String groupDN : groupDNs) {
+            addMemberToGroup(getAliasGroupMemberAttribute(), aliasRefAttr, groupDN);
         }
     }
     

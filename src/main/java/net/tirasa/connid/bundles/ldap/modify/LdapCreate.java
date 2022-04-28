@@ -52,6 +52,8 @@ public class LdapCreate extends LdapModifyOperation {
     private final ObjectClass oclass;
 
     private final Set<Attribute> attrs;
+    
+    private final GroupHelper groupHelper;
 
     public LdapCreate(
             final LdapConnection conn,
@@ -62,6 +64,7 @@ public class LdapCreate extends LdapModifyOperation {
         super(conn);
         this.oclass = oclass;
         this.attrs = attrs;
+        this.groupHelper = new GroupHelper(conn);
     }
 
     public Uid execute() {
@@ -82,6 +85,7 @@ public class LdapCreate extends LdapModifyOperation {
 
         final List<String> ldapGroups = new ArrayList<String>();
         final List<String> posixGroups = new ArrayList<String>();
+        final List<String> aliasGroups = new ArrayList<String>();
         GuardedPasswordAttribute pwdAttr = null;
         Boolean status = null;
 
@@ -96,6 +100,9 @@ public class LdapCreate extends LdapModifyOperation {
                         LdapUtil.checkedListByFilter(CollectionUtil.nullAsEmpty(attr.getValue()), String.class));
             } else if (LdapConstants.isPosixGroups(attr.getName())) {
                 posixGroups.addAll(
+                        LdapUtil.checkedListByFilter(CollectionUtil.nullAsEmpty(attr.getValue()), String.class));
+            } else if (LdapConstants.isAliasGroups(attr.getName())) {
+            	aliasGroups.addAll(
                         LdapUtil.checkedListByFilter(CollectionUtil.nullAsEmpty(attr.getValue()), String.class));
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
@@ -146,6 +153,12 @@ public class LdapCreate extends LdapModifyOperation {
             Set<String> posixRefAttrs = getAttributeValues(GroupHelper.getPosixRefAttribute(), null, ldapAttrs);
             String posixRefAttr = getFirstPosixRefAttr(entryDN[0], posixRefAttrs);
             groupHelper.addPosixGroupMemberships(posixRefAttr, posixGroups);
+        }
+        
+        if (!CollectionUtil.isEmpty(aliasGroups)) {
+        	Set<String> aliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), null, ldapAttrs);
+            String aliasRefAttr = getFirstAliasRefAttr(entryDN[0], aliasRefAttrs);
+            groupHelper.addAliasGroupMemberships(aliasRefAttr, posixGroups);
         }
 
         return conn.getSchemaMapping().createUid(oclass, entryDN[0]);
