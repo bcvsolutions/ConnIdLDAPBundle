@@ -25,9 +25,11 @@ package net.tirasa.connid.bundles.ldap.modify;
 
 import static net.tirasa.connid.bundles.ldap.commons.LdapUtil.quietCreateLdapName;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import javax.naming.NamingEnumeration;
@@ -39,6 +41,7 @@ import javax.naming.directory.ModificationItem;
 
 import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.Pair;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeUtil;
@@ -67,6 +70,7 @@ public class LdapUpdate extends LdapModifyOperation {
     
     private final GroupHelper groupHelper;
 
+    private final String RESET_PASSWORD = "RESET_PASSWORD";
     public LdapUpdate(
             final LdapConnection conn,
             final ObjectClass oclass,
@@ -313,6 +317,7 @@ public class LdapUpdate extends LdapModifyOperation {
     private Pair<Attributes, GuardedPasswordAttribute> getAttributesToModify(final Set<Attribute> attrs) {
         BasicAttributes ldapAttrs = new BasicAttributes();
         GuardedPasswordAttribute pwdAttr = null;
+        boolean resetPassword = false;
         for (Attribute attr : attrs) {
             javax.naming.directory.Attribute ldapAttr = null;
             if (attr.is(Uid.NAME)) {
@@ -328,6 +333,8 @@ public class LdapUpdate extends LdapModifyOperation {
             	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
+            } else if (attr.is(RESET_PASSWORD)) {
+            	resetPassword = true;
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
             }
@@ -347,7 +354,31 @@ public class LdapUpdate extends LdapModifyOperation {
                 }
             }
         }
+        
+        if (resetPassword) {
+        	GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), generateRandomPassword(30));
+        }
+        
         return new Pair<Attributes, GuardedPasswordAttribute>(ldapAttrs, pwdAttr);
+    }
+    
+    private GuardedString generateRandomPassword(int length) {
+    	System.out.println("QQQ generateRandomPassword START");
+    	byte[] array = new byte[length];
+        new Random().nextBytes(array);
+        String generatedString = new String(array, Charset.forName("UTF-8"));
+        System.out.println("QQQ generatedString: " + generatedString);
+        
+        // TODO v pripade ze LDAP nezvladne netisknutelne znaky
+//        String generatedString2 = random.ints(33, 126)
+//                .limit(30)
+//                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+//                .toString();
+//        System.out.println("QQQ generatedString2: " + generatedString2);
+//        return new GuardedString(generatedString2.toCharArray());
+        
+        System.out.println("QQQ reset password END");
+    	return new GuardedString(generatedString.toCharArray());
     }
 
     private void modifyAttributes(final String entryDN, Pair<Attributes, GuardedPasswordAttribute> attrs,
