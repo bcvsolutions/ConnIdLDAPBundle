@@ -356,28 +356,22 @@ public class LdapUpdate extends LdapModifyOperation {
         }
         
         if (resetPassword) {
-        	GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), generateRandomPassword(30));
+        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), generateRandomPassword(30));
         }
         
         return new Pair<Attributes, GuardedPasswordAttribute>(ldapAttrs, pwdAttr);
     }
     
+    /**
+     * Generate random password, efectively blocking account (account is not disabled, but nobody knows password)
+     * @param length
+     * @return
+     */
     private GuardedString generateRandomPassword(int length) {
-    	System.out.println("QQQ generateRandomPassword START");
     	byte[] array = new byte[length];
         new Random().nextBytes(array);
         String generatedString = new String(array, Charset.forName("UTF-8"));
-        System.out.println("QQQ generatedString: " + generatedString);
         
-        // TODO v pripade ze LDAP nezvladne netisknutelne znaky
-//        String generatedString2 = random.ints(33, 126)
-//                .limit(30)
-//                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-//                .toString();
-//        System.out.println("QQQ generatedString2: " + generatedString2);
-//        return new GuardedString(generatedString2.toCharArray());
-        
-        System.out.println("QQQ reset password END");
     	return new GuardedString(generatedString.toCharArray());
     }
 
