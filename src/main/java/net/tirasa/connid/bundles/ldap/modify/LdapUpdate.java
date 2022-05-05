@@ -70,7 +70,6 @@ public class LdapUpdate extends LdapModifyOperation {
     
     private final GroupHelper groupHelper;
 
-    private final String RESET_PASSWORD = "RESET_PASSWORD";
     public LdapUpdate(
             final LdapConnection conn,
             final ObjectClass oclass,

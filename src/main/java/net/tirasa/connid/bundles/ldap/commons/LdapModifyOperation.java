@@ -49,6 +49,8 @@ import org.identityconnectors.framework.common.exceptions.ConnectorException;
 
 public abstract class LdapModifyOperation {
 
+	protected final String RESET_PASSWORD = "RESET_PASSWORD";
+	
     protected final LdapConnection conn;
 
     protected final GroupHelper groupHelper;
