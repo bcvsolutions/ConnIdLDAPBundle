@@ -332,7 +332,7 @@ public class LdapUpdate extends LdapModifyOperation {
             	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
-            } else if (attr.is(RESET_PASSWORD)) {
+            } else if (attr.is(RESET_PASSWORD) && attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
             	resetPassword = true;
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
@@ -355,25 +355,13 @@ public class LdapUpdate extends LdapModifyOperation {
         }
         
         if (resetPassword) {
-        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), generateRandomPassword(30));
+        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), new GuardedString(generateRandomPassword(30)));
+        	ldapAttrs.put(AIX_PASSWORD_ATTRIBUTE, AIX_PASSWORD_PREFIX + String.valueOf(generateRandomPassword(13)));
         }
         
         return new Pair<Attributes, GuardedPasswordAttribute>(ldapAttrs, pwdAttr);
     }
     
-    /**
-     * Generate random password, efectively blocking account (account is not disabled, but nobody knows password)
-     * @param length
-     * @return
-     */
-    private GuardedString generateRandomPassword(int length) {
-    	byte[] array = new byte[length];
-        new Random().nextBytes(array);
-        String generatedString = new String(array, Charset.forName("UTF-8"));
-        
-    	return new GuardedString(generatedString.toCharArray());
-    }
-
     private void modifyAttributes(final String entryDN, Pair<Attributes, GuardedPasswordAttribute> attrs,
             final int ldapModifyOp) {
 

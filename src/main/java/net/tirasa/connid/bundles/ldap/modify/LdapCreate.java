@@ -37,6 +37,7 @@ import net.tirasa.connid.bundles.ldap.commons.StatusManagement;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute.Accessor;
 import org.identityconnectors.common.CollectionUtil;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeUtil;
@@ -88,6 +89,7 @@ public class LdapCreate extends LdapModifyOperation {
         final List<String> aliasGroups = new ArrayList<String>();
         GuardedPasswordAttribute pwdAttr = null;
         Boolean status = null;
+        boolean resetPassword = false;
 
         final BasicAttributes ldapAttrs = new BasicAttributes(true);
 
@@ -111,7 +113,8 @@ public class LdapCreate extends LdapModifyOperation {
                 if (attr.getValue() != null && !attr.getValue().isEmpty()) {
                     status = Boolean.parseBoolean(attr.getValue().get(0).toString());
                 }
-            } else if (attr.is(RESET_PASSWORD)) {
+            } else if (attr.is(RESET_PASSWORD) && attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
+            	resetPassword = true;
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
                 // Do not send empty attributes. 
@@ -129,6 +132,11 @@ public class LdapCreate extends LdapModifyOperation {
 
         if (ObjectClass.GROUP.equals(oclass)) {
             groupHelper.addMemberAttributeIfMissing(ldapAttrs);
+        }
+        
+        if (resetPassword) {
+        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), new GuardedString(generateRandomPassword(30)));
+        	ldapAttrs.put(AIX_PASSWORD_ATTRIBUTE, AIX_PASSWORD_PREFIX + String.valueOf(generateRandomPassword(13)));
         }
 
         final String[] entryDN = { null };
@@ -159,7 +167,7 @@ public class LdapCreate extends LdapModifyOperation {
         if (!CollectionUtil.isEmpty(aliasGroups)) {
         	Set<String> aliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), null, ldapAttrs);
             String aliasRefAttr = getFirstAliasRefAttr(entryDN[0], aliasRefAttrs);
-            groupHelper.addAliasGroupMemberships(aliasRefAttr, posixGroups);
+            groupHelper.addAliasGroupMemberships(aliasRefAttr, aliasGroups);
         }
 
         return conn.getSchemaMapping().createUid(oclass, entryDN[0]);

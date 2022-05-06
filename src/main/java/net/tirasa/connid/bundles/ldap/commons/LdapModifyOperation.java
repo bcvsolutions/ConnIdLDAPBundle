@@ -45,11 +45,14 @@ import net.tirasa.connid.bundles.ldap.LdapConnection;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper.GroupMembership;
 import net.tirasa.connid.bundles.ldap.search.LdapSearches;
 import org.identityconnectors.common.Base64;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 
 public abstract class LdapModifyOperation {
 
 	protected final String RESET_PASSWORD = "RESET_PASSWORD";
+	protected final String AIX_PASSWORD_ATTRIBUTE = "AIXPassword";
+	protected final String AIX_PASSWORD_PREFIX = "{crypt}";
 	
     protected final LdapConnection conn;
 
@@ -171,6 +174,21 @@ public abstract class LdapModifyOperation {
     		throw new ConnectorException(conn.format("cannotAddToAliasGroup",  null, entryDN, groupHelper.getAliasRefAttribute()));
     	}
     	return min(aliasRefAttrs);
+    }
+    
+    /**
+     * Generate random password, efectively blocking account (account is not disabled, but nobody knows password)
+     * @param length
+     * @return
+     */
+    protected char[] generateRandomPassword(int length) {
+    	Random random = new Random();
+    	char[] chars = new char[length];
+    	for (int i = 0; i < length; i++) {
+    		chars[i] = (char) (33 + (int)(random.nextFloat() * (126 - 33 + 1)));
+    	}
+        
+    	return chars;
     }
 
     /**
