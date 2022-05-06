@@ -332,8 +332,10 @@ public class LdapUpdate extends LdapModifyOperation {
             	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
-            } else if (attr.is(RESET_PASSWORD) && attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
-            	resetPassword = true;
+            } else if (attr.is(RESET_PASSWORD)) {
+            	if (attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
+            		resetPassword = true;
+            	}
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
             }

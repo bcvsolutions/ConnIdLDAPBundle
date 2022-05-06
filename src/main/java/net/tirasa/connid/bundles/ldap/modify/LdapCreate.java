@@ -113,8 +113,10 @@ public class LdapCreate extends LdapModifyOperation {
                 if (attr.getValue() != null && !attr.getValue().isEmpty()) {
                     status = Boolean.parseBoolean(attr.getValue().get(0).toString());
                 }
-            } else if (attr.is(RESET_PASSWORD) && attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
-            	resetPassword = true;
+            } else if (attr.is(RESET_PASSWORD)) {
+            	if (attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
+            		resetPassword = true;
+            	}
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
                 // Do not send empty attributes. 
