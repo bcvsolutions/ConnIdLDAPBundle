@@ -1,18 +1,18 @@
-/*
+/* 
  * ====================
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
- *
+ * 
  * Copyright 2008-2009 Sun Microsystems, Inc. All rights reserved.
- *
+ * 
  * The contents of this file are subject to the terms of the Common Development
  * and Distribution License("CDDL") (the "License").  You may not use this file
  * except in compliance with the License.
- *
+ * 
  * You can obtain a copy of the License at
  * http://opensource.org/licenses/cddl1.php
  * See the License for the specific language governing permissions and limitations
  * under the License.
- *
+ * 
  * When distributing the Covered Code, include this CDDL Header Notice in each file
  * and include the License file at http://opensource.org/licenses/cddl1.php.
  * If applicable, add the following below this CDDL Header, with the fields
@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
+import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.common.security.GuardedString.Accessor;
 import org.identityconnectors.framework.api.ConnectorFacade;
@@ -49,18 +51,17 @@ import org.identityconnectors.framework.common.objects.OperationOptionsBuilder;
 import org.identityconnectors.framework.common.objects.OperationalAttributes;
 import org.identityconnectors.framework.common.objects.QualifiedUid;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
+import org.identityconnectors.framework.common.objects.SearchResult;
 import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterBuilder;
-import net.tirasa.connid.bundles.ldap.LdapConfiguration;
-import net.tirasa.connid.bundles.ldap.LdapConnection;
-import net.tirasa.connid.bundles.ldap.LdapConnectorTestBase;
-import org.identityconnectors.common.CollectionUtil;
-import org.identityconnectors.framework.common.objects.SearchResult;
-import org.identityconnectors.framework.spi.SearchResultsHandler;
 import org.identityconnectors.test.common.TestHelpers;
 import org.identityconnectors.test.common.ToListResultsHandler;
 import org.junit.Test;
+
+import net.tirasa.connid.bundles.ldap.LdapConfiguration;
+import net.tirasa.connid.bundles.ldap.LdapConnection;
+import net.tirasa.connid.bundles.ldap.LdapConnectorTestBase;
 
 public class LdapSearchTests extends LdapConnectorTestBase {
 
@@ -156,56 +157,6 @@ public class LdapSearchTests extends LdapConnectorTestBase {
         FirstOnlyResultsHandler handler = new FirstOnlyResultsHandler();
         new LdapSearch(conn, ObjectClass.ACCOUNT, null, handler, options).execute();
         handler.assertSingleResult();
-    }
-
-    @Test
-    public void testSimplePagedSearch() {
-        LdapConfiguration config = newConfiguration();
-        ConnectorFacade facade = newFacade(config);
-
-        // read first page
-        List<ConnectorObject> objects = TestHelpers.searchToList(
-                facade, ObjectClass.ACCOUNT, null, new OperationOptionsBuilder().setPageSize(100).build());
-        assertNotNull(getObjectByName(objects, BUGS_BUNNY_DN));
-        assertNotNull(getObjectByName(objects, USER_0_DN));
-        assertEquals(100, objects.size());
-
-        // read all pages, being each page of 100 entries
-        final OperationOptionsBuilder builder = new OperationOptionsBuilder().setPageSize(100);
-        final String[] cookies = new String[1];
-        final Integer[] count = new Integer[] { 0, 0 };
-        do {
-            count[0] = 0;
-
-            if (cookies[0] != null) {
-                builder.setPagedResultsCookie(cookies[0]);
-            }
-
-            new LdapSearch(new LdapConnection(config), ObjectClass.ACCOUNT, null, new SearchResultsHandler() {
-
-                @Override
-                public void handleResult(final SearchResult result) {
-                    assertTrue(result.isAllResultsReturned());
-                    cookies[0] = result.getPagedResultsCookie();
-                }
-
-                @Override
-                public boolean handle(final ConnectorObject connectorObject) {
-                    // counts entries per page
-                    count[0]++;
-                    // counts entries globally
-                    count[1]++;
-                    return true;
-                }
-            }, builder.build()).execute();
-
-            if (cookies[0] != null) {
-                assertEquals(100, count[0], 0);
-            }
-        } while (cookies[0] != null);
-
-        // 2000 from BIG_COMPANY_DN, 4 from ACME_DN
-        assertEquals(2000 + 5, count[1], 0);
     }
 
     @Test
@@ -467,14 +418,9 @@ public class LdapSearchTests extends LdapConnectorTestBase {
         assertNotNull(czechRep);
 
         // Try with a name filter and options.
-        OperationOptionsBuilder builder = new OperationOptionsBuilder().setAttributesToGet("c");
-
         Filter filter = FilterBuilder.equalTo(AttributeBuilder.build(Name.NAME, CZECH_REPUBLIC_DN));
-        objects = TestHelpers.searchToList(facade, new ObjectClass("country"), filter, builder.build());
-        czechRep = getObjectByName(objects, CZECH_REPUBLIC_DN);
-        assertEquals(CZECH_REPUBLIC_C, AttributeUtil.getAsStringValue(czechRep.getAttributeByName("c")));
-
-        filter = FilterBuilder.equalsIgnoreCase(AttributeBuilder.build(Name.NAME, CZECH_REPUBLIC_DN));
+        OperationOptionsBuilder builder = new OperationOptionsBuilder();
+        builder.setAttributesToGet("c");
         objects = TestHelpers.searchToList(facade, new ObjectClass("country"), filter, builder.build());
         czechRep = getObjectByName(objects, CZECH_REPUBLIC_DN);
         assertEquals(CZECH_REPUBLIC_C, AttributeUtil.getAsStringValue(czechRep.getAttributeByName("c")));

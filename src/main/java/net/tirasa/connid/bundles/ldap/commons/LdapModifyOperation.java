@@ -45,10 +45,15 @@ import net.tirasa.connid.bundles.ldap.LdapConnection;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper.GroupMembership;
 import net.tirasa.connid.bundles.ldap.search.LdapSearches;
 import org.identityconnectors.common.Base64;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 
 public abstract class LdapModifyOperation {
 
+	protected final String RESET_PASSWORD = "RESET_PASSWORD";
+	protected final String AIX_PASSWORD_ATTRIBUTE = "AIXPassword";
+	protected final String AIX_PASSWORD_PREFIX = "{crypt}";
+	
     protected final LdapConnection conn;
 
     protected final GroupHelper groupHelper;
@@ -163,6 +168,28 @@ public abstract class LdapModifyOperation {
         }
         return min(posixRefAttrs);
     }
+    
+    protected final String getFirstAliasRefAttr(String entryDN, Set<String> aliasRefAttrs){
+    	if (isEmpty(aliasRefAttrs)){
+    		throw new ConnectorException(conn.format("cannotAddToAliasGroup",  null, entryDN, groupHelper.getAliasRefAttribute()));
+    	}
+    	return min(aliasRefAttrs);
+    }
+    
+    /**
+     * Generate random password, efectively blocking account (account is not disabled, but nobody knows password)
+     * @param length
+     * @return
+     */
+    protected char[] generateRandomPassword(int length) {
+    	Random random = new Random();
+    	char[] chars = new char[length];
+    	for (int i = 0; i < length; i++) {
+    		chars[i] = (char) (33 + (int)(random.nextFloat() * (126 - 33 + 1)));
+    	}
+        
+    	return chars;
+    }
 
     /**
      * Holds the POSIX ref attributes and the respective group memberships. Retrieves them lazily so that they are only
@@ -225,6 +252,69 @@ public abstract class LdapModifyOperation {
         private LdapEntry getLdapEntry() {
             if (entry == null) {
                 entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), GroupHelper.getPosixRefAttribute());
+            }
+            return entry;
+        }
+    }
+    
+    /**
+     * Holds the ALIAS ref attributes and the respective group
+     * memberships. Retrieves them lazily so that they are only
+     * retrieved once, when they are needed.
+     */
+    public final class AliasGroupMember {
+
+        private final String entryDN;
+
+        private LdapEntry entry;
+        private Set<String> aliasRefAttrs;
+        private Set<GroupMembership> aliasGroupMemberships;
+
+        public AliasGroupMember(String entryDN) {
+            this.entryDN = entryDN;
+        }
+
+        public Set<GroupMembership> getAliasGroupMemberships() {
+            if (aliasGroupMemberships == null) {
+                aliasGroupMemberships = groupHelper.getAliasGroupMemberships(getAliasRefAttributes());
+            }
+            return aliasGroupMemberships;
+        }
+
+        public Set<GroupMembership> getAliasGroupMembershipsByAttrs(Set<String> aliasRefAttrs) {
+            Set<GroupMembership> result = new HashSet<GroupMembership>();
+            for (GroupMembership member : getAliasGroupMemberships()) {
+                if (aliasRefAttrs.contains(member.getMemberRef())) {
+                    result.add(member);
+                }
+            }
+            return result;
+        }
+
+        public Set<GroupMembership> getAliasGroupMembershipsByGroups(List<String> groupDNs) {
+            Set<LdapName> groupNames = new HashSet<LdapName>();
+            for (String groupDN : groupDNs) {
+                groupNames.add(quietCreateLdapName(groupDN));
+            }
+            Set<GroupMembership> result = new HashSet<GroupMembership>();
+            for (GroupMembership member : getAliasGroupMemberships()) {
+                if (groupNames.contains(quietCreateLdapName(member.getGroupDN()))) {
+                    result.add(member);
+                }
+            }
+            return result;
+        }
+
+        public Set<String> getAliasRefAttributes() {
+            if (aliasRefAttrs == null) {
+                aliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), null, getLdapEntry().getAttributes());
+            }
+            return aliasRefAttrs;
+        }
+
+        private LdapEntry getLdapEntry() {
+            if (entry == null) {
+                entry = LdapSearches.getEntry(conn, quietCreateLdapName(entryDN), groupHelper.getAliasRefAttribute());
             }
             return entry;
         }

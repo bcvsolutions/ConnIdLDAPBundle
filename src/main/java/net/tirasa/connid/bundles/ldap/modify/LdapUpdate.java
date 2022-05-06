@@ -23,16 +23,33 @@
  */
 package net.tirasa.connid.bundles.ldap.modify;
 
+import static net.tirasa.connid.bundles.ldap.commons.LdapUtil.quietCreateLdapName;
+
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
+
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
+
+import org.identityconnectors.common.CollectionUtil;
+import org.identityconnectors.common.Pair;
+import org.identityconnectors.common.security.GuardedString;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
+import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeUtil;
+import org.identityconnectors.framework.common.objects.Name;
+import org.identityconnectors.framework.common.objects.ObjectClass;
+import org.identityconnectors.framework.common.objects.OperationalAttributes;
+import org.identityconnectors.framework.common.objects.Uid;
+
 import net.tirasa.connid.bundles.ldap.LdapConnection;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper.GroupMembership;
@@ -44,21 +61,14 @@ import net.tirasa.connid.bundles.ldap.commons.StatusManagement;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute;
 import net.tirasa.connid.bundles.ldap.schema.GuardedPasswordAttribute.Accessor;
 import net.tirasa.connid.bundles.ldap.search.LdapSearches;
-import org.identityconnectors.common.CollectionUtil;
-import org.identityconnectors.common.Pair;
-import org.identityconnectors.framework.common.exceptions.ConnectorException;
-import org.identityconnectors.framework.common.objects.Attribute;
-import org.identityconnectors.framework.common.objects.AttributeUtil;
-import org.identityconnectors.framework.common.objects.Name;
-import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.OperationalAttributes;
-import org.identityconnectors.framework.common.objects.Uid;
 
 public class LdapUpdate extends LdapModifyOperation {
 
     private final ObjectClass oclass;
 
     private final Uid uid;
+    
+    private final GroupHelper groupHelper;
 
     public LdapUpdate(
             final LdapConnection conn,
@@ -68,11 +78,13 @@ public class LdapUpdate extends LdapModifyOperation {
         super(conn);
         this.oclass = oclass;
         this.uid = uid;
+        this.groupHelper = new GroupHelper(conn);
     }
 
     public Uid update(final Set<Attribute> attrs) {
         String entryDN = LdapSearches.findEntryDN(conn, oclass, uid);
         PosixGroupMember posixMember = new PosixGroupMember(entryDN);
+        AliasGroupMember aliasMember = new AliasGroupMember(entryDN);
 
         // Extract the Name attribute if any, to be used to rename the entry later.
         Set<Attribute> updateAttrs = attrs;
@@ -94,6 +106,8 @@ public class LdapUpdate extends LdapModifyOperation {
         final List<String> ldapGroups = getStringListValue(updateAttrs, LdapConstants.LDAP_GROUPS_NAME);
 
         final List<String> posixGroups = getStringListValue(updateAttrs, LdapConstants.POSIX_GROUPS_NAME);
+        
+        final List<String> aliasGroups = getStringListValue(updateAttrs, LdapConstants.ALIAS_GROUPS_NAME);
 
         final Pair<Attributes, GuardedPasswordAttribute> attrToModify = getAttributesToModify(updateAttrs);
 
@@ -110,6 +124,11 @@ public class LdapUpdate extends LdapModifyOperation {
         if (newPosixRefAttrs != null && newPosixRefAttrs.isEmpty()) {
             checkRemovedPosixRefAttrs(posixMember.getPosixRefAttributes(),
                     posixMember.getPosixGroupMemberships());
+        }
+        
+        final Set<String> newAliasRefAttrs = getAttributeValues(groupHelper.getAliasRefAttribute(), quietCreateLdapName(newEntryDN!=null? newEntryDN: entryDN), ldapAttrs);
+        if (newAliasRefAttrs != null && newAliasRefAttrs.isEmpty()){
+        	checkRemovedAliasRefAttrs(aliasMember.getAliasRefAttributes(), aliasMember.getAliasGroupMemberships());
         }
 
         if (status != null && status.getValue() != null && !status.getValue().isEmpty()) {
@@ -131,6 +150,9 @@ public class LdapUpdate extends LdapModifyOperation {
             if (newPosixRefAttrs != null && conn.getConfiguration().
                     isMaintainPosixGroupMembership() || posixGroups != null) {
                 posixMember.getPosixRefAttributes();
+            }
+            if (newAliasRefAttrs != null && conn.getConfiguration().isMaintainAliasGroupMembership() || aliasGroups != null){
+            	aliasMember.getAliasRefAttributes();
             }
             oldEntryDN = entryDN;
             entryDN = conn.getSchemaMapping().rename(oclass, oldEntryDN, newName);
@@ -187,6 +209,36 @@ public class LdapUpdate extends LdapModifyOperation {
         }
 
         groupHelper.modifyPosixGroupMemberships(posixGroupMod);
+        
+        //update alias groups
+        Modification<GroupMembership> aliasGroupMod = new Modification<GroupMembership>();
+        if (newAliasRefAttrs != null && conn.getConfiguration().isMaintainAliasGroupMembership()) {
+            Set<String> removedAliasRefAttrs = new HashSet<String>(aliasMember.getAliasRefAttributes());
+            removedAliasRefAttrs.removeAll(newAliasRefAttrs);
+            Set<GroupMembership> members = aliasMember.getAliasGroupMembershipsByAttrs(removedAliasRefAttrs);
+            aliasGroupMod.removeAll(members);
+            if (!members.isEmpty()) {
+                String firstAliasRefAttr = getFirstAliasRefAttr(entryDN, newAliasRefAttrs);
+                for (GroupMembership member : members) {
+                    aliasGroupMod.add(new GroupMembership(firstAliasRefAttr, member.getGroupDN()));
+                }
+            }
+        }
+        
+        if (aliasGroups != null){
+        	Set<GroupMembership> members = aliasMember.getAliasGroupMemberships();
+        	aliasGroupMod.removeAll(members);
+        	aliasGroupMod.clearAdded(); // Since we will be replacing with the new groups.
+        	if (!aliasGroups.isEmpty()){
+        		String firstAliasRefAttr = getFirstAliasRefAttr(entryDN, newAliasRefAttrs);
+        		for (String aliasGroup : aliasGroups){
+        			aliasGroupMod.add(new GroupMembership(firstAliasRefAttr, aliasGroup));
+        		}
+        				
+        	}        	
+        }
+        
+        groupHelper.modifyAliasGroupMemberships(aliasGroupMod);
 
         return conn.getSchemaMapping().createUid(oclass, entryDN);
     }
@@ -240,7 +292,7 @@ public class LdapUpdate extends LdapModifyOperation {
 
         return uid;
     }
-
+    
     private void checkRemovedPosixRefAttrs(
             final Set<String> removedPosixRefAttrs,
             final Set<GroupMembership> memberships) {
@@ -252,10 +304,19 @@ public class LdapUpdate extends LdapModifyOperation {
             }
         }
     }
+    
+    private void checkRemovedAliasRefAttrs(Set<String> removedAliasRefAttrs, Set<GroupMembership> memberships) {
+        for (GroupMembership membership : memberships) {
+            if (removedAliasRefAttrs.contains(membership.getMemberRef())) {
+                throw new ConnectorException(conn.format("cannotRemoveBecauseAliasMember", groupHelper.getAliasRefAttribute()));
+            }
+        }
+    }
 
     private Pair<Attributes, GuardedPasswordAttribute> getAttributesToModify(final Set<Attribute> attrs) {
         BasicAttributes ldapAttrs = new BasicAttributes();
         GuardedPasswordAttribute pwdAttr = null;
+        boolean resetPassword = false;
         for (Attribute attr : attrs) {
             javax.naming.directory.Attribute ldapAttr = null;
             if (attr.is(Uid.NAME)) {
@@ -267,8 +328,14 @@ public class LdapUpdate extends LdapModifyOperation {
                 // Handled elsewhere.
             } else if (LdapConstants.isPosixGroups(attr.getName())) {
                 // Handled elsewhere.
+            } else if (LdapConstants.isAliasGroups(attr.getName())) {
+            	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
+            } else if (attr.is(RESET_PASSWORD)) {
+            	if (attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
+            		resetPassword = true;
+            	}
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
             }
@@ -288,9 +355,15 @@ public class LdapUpdate extends LdapModifyOperation {
                 }
             }
         }
+        
+        if (resetPassword) {
+        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), new GuardedString(generateRandomPassword(30)));
+        	ldapAttrs.put(AIX_PASSWORD_ATTRIBUTE, AIX_PASSWORD_PREFIX + String.valueOf(generateRandomPassword(13)));
+        }
+        
         return new Pair<Attributes, GuardedPasswordAttribute>(ldapAttrs, pwdAttr);
     }
-
+    
     private void modifyAttributes(final String entryDN, Pair<Attributes, GuardedPasswordAttribute> attrs,
             final int ldapModifyOp) {
 

@@ -74,12 +74,28 @@ public class GroupHelper {
         return "uid";
     }
 
+    public String getAliasRefAttribute() {
+    	String aliasRef = conn.getConfiguration().getAliasGroupMemberRefAttribute();
+        if (aliasRef == null) {
+        	aliasRef = "mail";
+        }
+        return aliasRef;
+    }
+    
     private String getLdapGroupMemberAttribute() {
         String memberAttr = conn.getConfiguration().getGroupMemberAttribute();
         if (memberAttr == null) {
             memberAttr = "uniqueMember"; // For groupOfUniqueNames.
         }
         return memberAttr;
+    }
+    
+    public String getAliasGroupMemberAttribute(){
+    	String memberAttr = conn.getConfiguration().getAliasGroupMemberAttribute();
+    	if (memberAttr == null || memberAttr.equals("")){
+    		memberAttr = "rfc822MailMember"; // For nisMailAlias
+    	}
+    	return memberAttr;
     }
 
     public List<String> getLdapGroups(String entryDN) {
@@ -98,7 +114,7 @@ public class GroupHelper {
         LdapSearches.findEntries(handler, conn, filter);
         return handler.getResults();
     }
-
+    
     public void addLdapGroupMemberships(String entryDN, Collection<String> groupDNs) {
         log.ok("Adding {0} to LDAP groups {1}", entryDN, groupDNs);
         String ldapGroupMemberAttribute = getLdapGroupMemberAttribute();
@@ -135,7 +151,7 @@ public class GroupHelper {
     }
 
     public Set<GroupMembership> getPosixGroupMemberships(Collection<String> posixRefAttrs) {
-        log.ok("Retrieving POSIX group memberships for ", posixRefAttrs);
+        log.ok("Retrieving POSIX group memberships for {0}", posixRefAttrs);
         ToGroupMembershipHandler handler = new ToGroupMembershipHandler();
         for (String posixRefAttr : posixRefAttrs) {
             String filter = createAttributeFilter("memberUid", singletonList(posixRefAttr));
@@ -144,6 +160,17 @@ public class GroupHelper {
         }
         return handler.getResults();
     }
+    
+    public Set<GroupMembership> getAliasGroupMemberships(Set<String> aliasRefAttrs) {
+    	log.ok("Retrieving Alias group memberships for {0}", aliasRefAttrs);
+    	ToGroupMembershipHandler handler = new ToGroupMembershipHandler();
+        for (String aliasRefAttr : aliasRefAttrs) {
+            String filter = createAttributeFilter(getAliasGroupMemberAttribute(), singletonList(aliasRefAttr));
+            handler.setMemberRef(aliasRefAttr);
+            LdapSearches.findEntries(handler, conn, filter);
+        }
+        return handler.getResults();
+	}
 
     public void addPosixGroupMemberships(String posixRefAttr, Collection<String> groupDNs) {
         log.ok("Adding {0} to POSIX groups {1}", posixRefAttr, groupDNs);
@@ -151,7 +178,7 @@ public class GroupHelper {
             addMemberToGroup("memberUid", posixRefAttr, groupDN);
         }
     }
-
+    
     public void removePosixGroupMemberships(Set<GroupMembership> memberships) {
         log.ok("Removing POSIX group memberships {0}", memberships);
         for (GroupMembership membership : memberships) {
@@ -169,6 +196,23 @@ public class GroupHelper {
             addMemberToGroup("memberUid", membership.getMemberRef(), membership.getGroupDN());
         }
     }
+    
+    public void addAliasGroupMemberships(String aliasRefAttr, Collection<String> groupDNs) {
+        log.ok("Adding {0} to Alias groups {1}", aliasRefAttr, groupDNs);
+        for (String groupDN : groupDNs) {
+            addMemberToGroup(getAliasGroupMemberAttribute(), aliasRefAttr, groupDN);
+        }
+    }
+    
+    public void modifyAliasGroupMemberships(Modification<GroupMembership> mod) {
+		log.ok("Modifying ALIAS group memberships: removing {0}, adding {1}", mod.getRemoved(), mod.getAdded());
+		for(GroupMembership membership: mod.getRemoved()){
+			removeMemberFromGroup(getAliasGroupMemberAttribute(), membership.getMemberRef(), membership.getGroupDN());
+		}
+		for(GroupMembership membership: mod.getAdded()){
+			addMemberToGroup(getAliasGroupMemberAttribute(), membership.getMemberRef(), membership.getGroupDN());
+		}
+	}
 
     public void addMemberAttributeIfMissing(final BasicAttributes ldapAttrs) {
         String[] groupObjectClasses = conn.getConfiguration().getGroupObjectClasses();

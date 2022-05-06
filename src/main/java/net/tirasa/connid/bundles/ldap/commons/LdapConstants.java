@@ -38,6 +38,8 @@ public class LdapConstants {
 
     public static final String POSIX_GROUPS_NAME = "posixGroups";
 
+    public static final String ALIAS_GROUPS_NAME = "aliasGroups";
+    
     public static final String LDAP_UID_ATTRS_NAME = "ldap_uid_attributes";
 
     public static final String SEARCH_FILTER_NAME = "searchFilter";
@@ -63,6 +65,10 @@ public class LdapConstants {
 
     public static boolean isPosixGroups(String attrName) {
         return POSIX_GROUPS_NAME.equalsIgnoreCase(attrName);
+    }
+    
+    public static boolean isAliasGroups(String attrName){
+    	return ALIAS_GROUPS_NAME.equalsIgnoreCase(attrName);
     }
 
     public static String[] getLdapUidAttributes(OperationOptions options) {

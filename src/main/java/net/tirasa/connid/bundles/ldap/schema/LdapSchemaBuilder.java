@@ -40,7 +40,7 @@ import org.identityconnectors.framework.spi.operations.AuthenticateOp;
 import org.identityconnectors.framework.spi.operations.SyncOp;
 import net.tirasa.connid.bundles.ldap.commons.LdapAttributeType;
 import net.tirasa.connid.bundles.ldap.LdapConnection;
-import net.tirasa.connid.bundles.ldap.LdapConnector;
+import net.tirasa.connid.bundles.ldap.BcvLdapConnector;
 import net.tirasa.connid.bundles.ldap.commons.LdapNativeSchema;
 import net.tirasa.connid.bundles.ldap.commons.ObjectClassMappingConfig;
 import net.tirasa.connid.bundles.ldap.LdapConnection.ServerType;
@@ -66,7 +66,7 @@ class LdapSchemaBuilder {
     }
 
     private void buildSchema() {
-        SchemaBuilder schemaBld = new SchemaBuilder(LdapConnector.class);
+        SchemaBuilder schemaBld = new SchemaBuilder(BcvLdapConnector.class);
 
         for (ObjectClassMappingConfig oclassConfig : conn.getConfiguration().getObjectClassMappingConfigs().values()) {
             ObjectClass oclass = oclassConfig.getObjectClass();

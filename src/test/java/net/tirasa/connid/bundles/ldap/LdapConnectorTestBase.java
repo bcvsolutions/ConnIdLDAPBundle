@@ -244,7 +244,7 @@ public abstract class LdapConnectorTestBase {
 
     public static ConnectorFacade newFacade(final LdapConfiguration cfg) {
         ConnectorFacadeFactory factory = ConnectorFacadeFactory.getInstance();
-        APIConfiguration impl = TestHelpers.createTestConfiguration(LdapConnector.class, cfg);
+        APIConfiguration impl = TestHelpers.createTestConfiguration(BcvLdapConnector.class, cfg);
         impl.getResultsHandlerConfiguration().setFilteredResultsHandlerInValidationMode(true);
         return factory.newInstance(impl);
     }
