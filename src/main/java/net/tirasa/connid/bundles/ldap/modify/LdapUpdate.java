@@ -25,9 +25,11 @@ package net.tirasa.connid.bundles.ldap.modify;
 
 import static net.tirasa.connid.bundles.ldap.commons.LdapUtil.quietCreateLdapName;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import javax.naming.NamingEnumeration;
@@ -39,6 +41,7 @@ import javax.naming.directory.ModificationItem;
 
 import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.Pair;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeUtil;
@@ -313,6 +316,7 @@ public class LdapUpdate extends LdapModifyOperation {
     private Pair<Attributes, GuardedPasswordAttribute> getAttributesToModify(final Set<Attribute> attrs) {
         BasicAttributes ldapAttrs = new BasicAttributes();
         GuardedPasswordAttribute pwdAttr = null;
+        boolean resetPassword = false;
         for (Attribute attr : attrs) {
             javax.naming.directory.Attribute ldapAttr = null;
             if (attr.is(Uid.NAME)) {
@@ -328,6 +332,10 @@ public class LdapUpdate extends LdapModifyOperation {
             	// Handled elsewhere
             } else if (attr.is(OperationalAttributes.PASSWORD_NAME)) {
                 pwdAttr = conn.getSchemaMapping().encodePassword(oclass, attr);
+            } else if (attr.is(RESET_PASSWORD)) {
+            	if (attr.getValue() != null && (Boolean) attr.getValue().get(0) == true) {
+            		resetPassword = true;
+            	}
             } else {
                 ldapAttr = conn.getSchemaMapping().encodeAttribute(oclass, attr);
             }
@@ -347,9 +355,15 @@ public class LdapUpdate extends LdapModifyOperation {
                 }
             }
         }
+        
+        if (resetPassword) {
+        	pwdAttr = GuardedPasswordAttribute.create(conn.getConfiguration().getPasswordAttribute(), new GuardedString(generateRandomPassword(30)));
+        	ldapAttrs.put(AIX_PASSWORD_ATTRIBUTE, AIX_PASSWORD_PREFIX + String.valueOf(generateRandomPassword(13)));
+        }
+        
         return new Pair<Attributes, GuardedPasswordAttribute>(ldapAttrs, pwdAttr);
     }
-
+    
     private void modifyAttributes(final String entryDN, Pair<Attributes, GuardedPasswordAttribute> attrs,
             final int ldapModifyOp) {
 
