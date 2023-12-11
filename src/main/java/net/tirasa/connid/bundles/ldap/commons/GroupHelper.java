@@ -164,10 +164,12 @@ public class GroupHelper {
     public Set<GroupMembership> getAliasGroupMemberships(Set<String> aliasRefAttrs) {
     	log.ok("Retrieving Alias group memberships for {0}", aliasRefAttrs);
     	ToGroupMembershipHandler handler = new ToGroupMembershipHandler();
-        for (String aliasRefAttr : aliasRefAttrs) {
-            String filter = createAttributeFilter(getAliasGroupMemberAttribute(), singletonList(aliasRefAttr));
-            handler.setMemberRef(aliasRefAttr);
-            LdapSearches.findEntries(handler, conn, filter);
+        if (aliasRefAttrs != null) {
+            for (String aliasRefAttr : aliasRefAttrs) {
+                String filter = createAttributeFilter(getAliasGroupMemberAttribute(), singletonList(aliasRefAttr));
+                handler.setMemberRef(aliasRefAttr);
+                LdapSearches.findEntries(handler, conn, filter);
+            }
         }
         return handler.getResults();
 	}
