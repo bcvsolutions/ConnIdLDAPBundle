@@ -203,6 +203,13 @@ public class GroupHelper {
             addMemberToGroup(getAliasGroupMemberAttribute(), aliasRefAttr, groupDN);
         }
     }
+
+    public void removeAliasGroupMembership(Set<GroupMembership> memberships) {
+        log.ok("Removing Alias group memberships {0}", memberships);
+        for (GroupMembership membership : memberships) {
+            removeMemberFromGroup(getAliasGroupMemberAttribute(), membership.getMemberRef(), membership.getGroupDN());
+        }
+    }
     
     public void modifyAliasGroupMemberships(Modification<GroupMembership> mod) {
 		log.ok("Modifying ALIAS group memberships: removing {0}, adding {1}", mod.getRemoved(), mod.getAdded());
