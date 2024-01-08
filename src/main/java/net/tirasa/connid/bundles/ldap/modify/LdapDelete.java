@@ -30,6 +30,7 @@ import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.Uid;
 import net.tirasa.connid.bundles.ldap.LdapConnection;
+import net.tirasa.connid.bundles.ldap.commons.GroupHelper;
 import net.tirasa.connid.bundles.ldap.commons.LdapModifyOperation;
 import net.tirasa.connid.bundles.ldap.commons.GroupHelper.GroupMembership;
 import net.tirasa.connid.bundles.ldap.search.LdapSearches;
@@ -58,6 +59,12 @@ public class LdapDelete extends LdapModifyOperation {
             PosixGroupMember posixMember = new PosixGroupMember(entryDN);
             Set<GroupMembership> memberships = posixMember.getPosixGroupMemberships();
             groupHelper.removePosixGroupMemberships(memberships);
+        }
+
+        if (conn.getConfiguration().isMaintainAliasGroupMembership()) {
+            AliasGroupMember aliasMember = new AliasGroupMember(entryDN);
+            Set<GroupMembership> memberships = aliasMember.getAliasGroupMemberships();
+            groupHelper.removeAliasGroupMembership(memberships);
         }
 
         try {
